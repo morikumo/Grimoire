@@ -1,0 +1,64 @@
+{
+  "commands": [
+    {
+      "name": "file",
+      "description": "Identifier le type d'un fichier",
+      "usage": "file <fichier>",
+      "tags": ["fichier", "analyse", "ctf", "forensic"]
+    },
+    {
+      "name": "exiftool",
+      "description": "Lire et modifier les métadonnées EXIF",
+      "usage": "exiftool <fichier>",
+      "tags": ["image", "métadonnées", "ctf", "forensic"]
+    },
+    {
+      "name": "binwalk",
+      "description": "Analyser et extraire les données embarquées",
+      "usage": "binwalk <fichier>",
+      "tags": ["image", "firmware", "ctf", "forensic"]
+    },
+    {
+      "name": "strings",
+      "description": "Extraire les chaînes lisibles d'un binaire",
+      "usage": "strings <fichier>",
+      "tags": ["binaire", "ctf", "forensic", "reverse"]
+    },
+    {
+      "name": "nmap",
+      "description": "Scanner les ports et services réseau",
+      "usage": "nmap -sV <ip>",
+      "tags": ["réseau", "port", "scan", "ctf"]
+    },
+    {
+      "name": "netcat",
+      "description": "Lire et écrire sur des connexions réseau",
+      "usage": "nc <ip> <port>",
+      "tags": ["réseau", "connexion", "ctf"]
+    },
+    {
+      "name": "steghide",
+      "description": "Cacher ou extraire des données dans une image",
+      "usage": "steghide extract -sf <image>",
+      "tags": ["image", "stéganographie", "ctf"]
+    },
+    {
+      "name": "hashcat",
+      "description": "Cracker des hashs par dictionnaire ou bruteforce",
+      "usage": "hashcat -m <mode> <hash> <wordlist>",
+      "tags": ["hash", "crack", "password", "ctf"]
+    },
+    {
+      "name": "john",
+      "description": "Cracker des mots de passe",
+      "usage": "john --wordlist=<wordlist> <hashfile>",
+      "tags": ["hash", "crack", "password", "ctf"]
+    },
+    {
+      "name": "curl",
+      "description": "Faire des requêtes HTTP depuis le terminal",
+      "usage": "curl -X GET <url>",
+      "tags": ["web", "http", "réseau", "ctf"]
+    }
+  ]
+}
