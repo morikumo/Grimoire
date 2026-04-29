@@ -27,6 +27,7 @@ usage() {
     echo -e "  ${GREEN}./grimoire.sh réseau${RESET}    → commandes liées au réseau"
     echo -e "  ${GREEN}./grimoire.sh ctf${RESET}       → commandes CTF"
     echo -e "  ${GREEN}./grimoire.sh --add${RESET}     → ajouter une commande"
+    echo -e "  ${GREEN}grimoire --file <fichier>${RESET}  → analyser un fichier et suggérer les outils"
     echo ""
 }
 
@@ -130,11 +131,25 @@ add_command() {
     echo -e "\n${GREEN}✅ '$name' ajouté au grimoire.${RESET}"
 }
 
+analyze_file() {
+    local filepath="$1"
+
+    # Vérifier que le fichier existe
+    if [[ ! -f "$filepath" ]]; then
+        echo -e "${YELLOW}Fichier introuvable :${RESET} $filepath"
+        exit 1
+    fi
+}
+
 # Point d'entrée
 case "$1" in
     "")
         interactive
         ;;
+    --file|-f)
+    [[ -z "$2" ]] && echo -e "${YELLOW}Usage : grimoire --file <fichier>${RESET}" && exit 1
+    analyze_file "$2"
+    ;;
     --add|-a)
         add_command
         ;;
