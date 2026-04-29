@@ -107,6 +107,17 @@
         "réseau",
         "ctf"
       ]
+    },
+    {
+      "name": "rustscan",
+      "description": "Analyse de port moderne, nmap en mieux",
+      "usage": "rustscan -A <ip>",
+      "tags": [
+        "port",
+        "scan",
+        "ctf",
+        "réseau"
+      ]
     }
   ]
 }
