@@ -139,6 +139,112 @@ analyze_file() {
         echo -e "${YELLOW}Fichier introuvable :${RESET} $filepath"
         exit 1
     fi
+
+    echo -e "${CYAN}Grimoire${RESET} — Analyse de fichier\n"
+    echo -e "${DIM}Fichier :${RESET} $filepath\n"
+
+    # Détecter le type avec file
+    filetype=$(file -b "$filepath" | tr '[:upper:]' '[:lower:]')
+    echo -e "${DIM}Type détecté :${RESET} ${GREEN}$filetype${RESET}\n"
+
+    # Mapper le type vers des tags de recherche
+    tags=()
+
+    echo "$filetype" | grep -qi "png\|jpeg\|jpg\|gif\|bmp\|image"  && tags+=("image")
+    echo "$filetype" | grep -qi "pdf"                               && tags+=("pdf")
+    echo "$filetype" | grep -qi "zip\|gzip\|bzip\|xz\|archive\|compressed\|tar" && tags+=("archive")
+    echo "$filetype" | grep -qi "elf\|executable"                   && tags+=("reverse" "binaire")
+    echo "$filetype" | grep -qi "pcap\|tcpdump\|capture"           && tags+=("réseau" "pcap")
+    echo "$filetype" | grep -qi "text\|ascii"                       && tags+=("texte")
+    echo "$filetype" | grep -qi "audio\|mp3\|wav\|ogg"             && tags+=("audio")
+    echo "$filetype" | grep -qi "video\|mp4\|avi"                  && tags+=("video")
+    echo "$filetype" | grep -qi "certificate\|x509\|pem"           && tags+=("crypto")
+    echo "$filetype" | grep -qi "sqlite\|database"                 && tags+=("database")
+
+    # Si aucun tag trouvé
+    # Commandes génériques toujours suggérées en plus
+    GENERIC_TOOLS=(
+        "file|Identifier le type d'un fichier|file <fichier>"
+        "strings|Extraire les chaînes lisibles|strings <fichier>"
+        "xxd|Afficher le hexdump|xxd <fichier> | head -50"
+        "binwalk|Analyser les données embarquées|binwalk <fichier>"
+        "exiftool|Lire les métadonnées|exiftool <fichier>"
+        "hexedit|Editeur hexadécimal interactif|hexedit <fichier>"
+        "strace|Tracer les appels système|strace ./<fichier>"
+        "ltrace|Tracer les appels librairie|ltrace ./<fichier>"
+    )
+
+    if [[ ${#tags[@]} -eq 0 ]]; then
+        echo -e "${YELLOW}Type non reconnu — outils d'investigation génériques :${RESET}\n"
+
+        echo -e "${DIM}COMMANDE         DESCRIPTION                          USAGE${RESET}"
+        echo -e "${DIM}---------------- ------------------------------------ --------------------------${RESET}"
+
+        for tool in "${GENERIC_TOOLS[@]}"; do
+            IFS='|' read -r name desc usage <<< "$tool"
+            if command -v "$name" &>/dev/null; then
+                installed="${GREEN}✅${RESET}"
+            else
+                installed="${YELLOW}⚠️ ${RESET}"
+            fi
+            printf "$installed ${GREEN}%-16s${RESET} %-36s ${DIM}%s${RESET}\n" \
+                "$name" "$desc" "$usage"
+        done
+        echo ""
+        exit 0
+    fi
+
+    # Toujours ajouter strings et xxd en bas peu importe le type
+    echo -e "\n${DIM}── Outils génériques toujours utiles ──${RESET}"
+    for tool in "${GENERIC_TOOLS[@]}"; do
+        IFS='|' read -r name desc usage <<< "$tool"
+        [[ " ${seen[*]} " =~ " ${name} " ]] && continue
+        if command -v "$name" &>/dev/null; then
+            installed="${GREEN}✅${RESET}"
+        else
+            installed="${YELLOW}⚠️ ${RESET}"
+        fi
+        printf "$installed ${GREEN}%-16s${RESET} %-36s ${DIM}%s${RESET}\n" \
+            "$name" "$desc" "$usage"
+    done
+
+    # Infos supplémentaires sur le fichier
+    echo -e "${DIM}Taille  :${RESET} $(du -h "$filepath" | cut -f1)"
+    echo -e "${DIM}Entropy :${RESET} $(ent "$filepath" 2>/dev/null | grep Entropy | awk '{print $3}' || echo 'ent non installé')"
+    echo -e "${DIM}Hexdump :${RESET} $(xxd "$filepath" | head -5)\n"
+
+    # Chercher les commandes pour chaque tag
+    echo -e "${CYAN}Outils suggérés :${RESET}\n"
+    echo -e "${DIM}COMMANDE         DESCRIPTION                          USAGE${RESET}"
+    echo -e "${DIM}---------------- ------------------------------------ --------------------------${RESET}"
+
+    seen=()
+    for tag in "${tags[@]}"; do
+        results=$(jq -r --arg kw "$tag" '
+            .commands[] |
+            select(.tags[] | test($kw; "i")) |
+            "\(.name)|\(.description)|\(.usage)"
+        ' "$DB")
+
+        while IFS='|' read -r name desc usage; do
+            # Dédupliquer
+            [[ -z "$name" ]] && continue
+            if [[ ! " ${seen[*]} " =~ " ${name} " ]]; then
+                seen+=("$name")
+                # Vérifier si installé
+                if command -v "$name" &>/dev/null; then
+                    installed="${GREEN}✅${RESET}"
+                else
+                    installed="${YELLOW}⚠️ ${RESET}"
+                fi
+                printf "$installed ${GREEN}%-16s${RESET} %-36s ${DIM}%s${RESET}\n" \
+                    "$name" "$desc" "$usage"
+            fi
+        done <<< "$results"
+    done
+
+    echo ""
+    echo -e "${DIM}✅ installé   ⚠️  non installé${RESET}"
 }
 
 # Point d'entrée
