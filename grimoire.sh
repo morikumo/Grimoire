@@ -148,18 +148,131 @@ analyze_file() {
     echo -e "${DIM}Type détecté :${RESET} ${GREEN}$filetype${RESET}\n"
 
     # Mapper le type vers des tags de recherche
+# ── Guidance contextuelle ─────────────────────────────────
+    guidance=()
     tags=()
 
-    echo "$filetype" | grep -qi "png\|jpeg\|jpg\|gif\|bmp\|image"  && tags+=("image")
-    echo "$filetype" | grep -qi "pdf"                               && tags+=("pdf")
-    echo "$filetype" | grep -qi "zip\|gzip\|bzip\|xz\|archive\|compressed\|tar" && tags+=("archive")
-    echo "$filetype" | grep -qi "elf\|executable"                   && tags+=("reverse" "binaire")
-    echo "$filetype" | grep -qi "pcap\|tcpdump\|capture"           && tags+=("réseau" "pcap")
-    echo "$filetype" | grep -qi "text\|ascii"                       && tags+=("texte")
-    echo "$filetype" | grep -qi "audio\|mp3\|wav\|ogg"             && tags+=("audio")
-    echo "$filetype" | grep -qi "video\|mp4\|avi"                  && tags+=("video")
-    echo "$filetype" | grep -qi "certificate\|x509\|pem"           && tags+=("crypto")
-    echo "$filetype" | grep -qi "sqlite\|database"                 && tags+=("database")
+    # Image
+    if echo "$filetype" | grep -qi "png\|jpeg\|jpg\|gif\|bmp\|image"; then
+        tags+=("image")
+        guidance+=(
+            "1. Vérifier le type réel        → file <fichier>"
+            "2. Lire les métadonnées EXIF     → exiftool <fichier>"
+            "3. Chercher données embarquées   → binwalk <fichier>"
+            "4. Chercher stéganographie LSB   → zsteg <fichier> (PNG)"
+            "5. Extraire données cachées      → steghide extract -sf <fichier>"
+            "6. Inspecter en hexa             → xxd <fichier> | head -30"
+        )
+    fi
+
+    # Archive / compressé
+    if echo "$filetype" | grep -qi "zip\|gzip\|bzip\|xz\|archive\|compressed\|tar"; then
+        tags+=("archive")
+        guidance+=(
+            "1. Lister le contenu             → tar -tvf <fichier> ou unzip -l <fichier>"
+            "2. Extraire                       → tar -xvf <fichier> ou unzip <fichier>"
+            "3. Vérifier si protégé            → zipinfo <fichier>"
+            "4. Cracker le mot de passe ZIP    → john --format=zip <fichier>"
+            "5. Chercher données embarquées    → binwalk <fichier>"
+        )
+    fi
+
+    # ELF / binaire
+    if echo "$filetype" | grep -qi "elf\|executable"; then
+        tags+=("reverse" "binaire")
+        guidance+=(
+            "1. Infos générales               → file <fichier> && checksec <fichier>"
+            "2. Extraire les chaînes          → strings <fichier> | grep -i flag"
+            "3. Symboles et fonctions         → nm <fichier> ou readelf -s <fichier>"
+            "4. Tracer les appels système     → strace ./<fichier>"
+            "5. Tracer les appels librairie   → ltrace ./<fichier>"
+            "6. Reverse engineering           → ghidra ou radare2 ou gdb"
+        )
+    fi
+
+    # PCAP / capture réseau
+    if echo "$filetype" | grep -qi "pcap\|tcpdump\|capture"; then
+        tags+=("réseau" "pcap")
+        guidance+=(
+            "1. Ouvrir et analyser            → wireshark <fichier>"
+            "2. Analyser en CLI               → tshark -r <fichier>"
+            "3. Extraire les flux HTTP        → tshark -r <fichier> -Y http"
+            "4. Extraire les fichiers         → binwalk <fichier>"
+            "5. Suivre les streams TCP        → tshark -r <fichier> -z follow,tcp,ascii,0"
+        )
+    fi
+
+    # PDF
+    if echo "$filetype" | grep -qi "pdf"; then
+        tags+=("pdf")
+        guidance+=(
+            "1. Lire les métadonnées          → exiftool <fichier>"
+            "2. Extraire le texte             → pdftotext <fichier>"
+            "3. Analyser la structure         → pdfid <fichier>"
+            "4. Chercher du JS ou macros      → pdf-parser <fichier>"
+            "5. Extraire les objets           → peepdf <fichier>"
+        )
+    fi
+
+    # Texte / ASCII
+    if echo "$filetype" | grep -qi "text\|ascii"; then
+        tags+=("texte" "crypto")
+        guidance+=(
+            "1. Lire le contenu               → cat <fichier>"
+            "2. Chercher des patterns         → grep -i 'flag\|key\|pass' <fichier>"
+            "3. Détecter encodage Base64      → base64 -d <fichier>"
+            "4. Détecter chiffrement César    → cat <fichier> | tr 'A-Za-z' 'N-ZA-Mn-za-m'"
+            "5. Analyser avec CyberChef       → https://gchq.github.io/CyberChef"
+        )
+    fi
+
+    # Audio
+    if echo "$filetype" | grep -qi "audio\|mp3\|wav\|ogg\|flac"; then
+        tags+=("audio")
+        guidance+=(
+            "1. Lire les métadonnées          → exiftool <fichier>"
+            "2. Visualiser le spectrogramme   → sonic-visualiser <fichier>"
+            "3. Analyser avec Audacity        → audacity <fichier>"
+            "4. Chercher données embarquées   → binwalk <fichier>"
+            "5. Détecter SSTV ou morse        → écouter et analyser visuellement"
+        )
+    fi
+
+    # Certificat / crypto
+    if echo "$filetype" | grep -qi "certificate\|x509\|pem\|rsa"; then
+        tags+=("crypto")
+        guidance+=(
+            "1. Lire le certificat            → openssl x509 -in <fichier> -text"
+            "2. Lire une clé privée           → openssl rsa -in <fichier> -text"
+            "3. Factoriser un modulus faible  → rsactftool --publickey <fichier> --attack all"
+            "4. Vérifier la signature         → openssl verify <fichier>"
+        )
+    fi
+
+    # Base de données
+    if echo "$filetype" | grep -qi "sqlite\|database"; then
+        tags+=("database")
+        guidance+=(
+            "1. Ouvrir la base                → sqlite3 <fichier>"
+            "2. Lister les tables             → sqlite3 <fichier> '.tables'"
+            "3. Lire le contenu               → sqlite3 <fichier> 'SELECT * FROM <table>'"
+            "4. Lire en hexa si corrompu      → xxd <fichier> | head -20"
+        )
+    fi
+
+    # Données chiffrées / encodées (entropie haute)
+    if echo "$filetype" | grep -qi "data\|unknown\|binary"; then
+        tags+=("ctf")
+        guidance+=(
+            "1. Inspecter les magic bytes     → xxd <fichier> | head -5"
+            "2. Extraire les chaînes          → strings <fichier>"
+            "3. Chercher données embarquées   → binwalk <fichier>"
+            "4. Vérifier l'entropie           → ent <fichier>"
+            "5. Tester décodage Base64        → base64 -d <fichier>"
+            "6. Tester si XOR                 → xortool <fichier>"
+            "7. Analyser avec CyberChef       → https://gchq.github.io/CyberChef"
+        )
+    fi
 
     # Si aucun tag trouvé
     # Commandes génériques toujours suggérées en plus
@@ -192,6 +305,15 @@ analyze_file() {
         done
         echo ""
         exit 0
+    fi
+
+    # ── Affichage guidance ────────────────────────────────────
+    if [[ ${#guidance[@]} -gt 0 ]]; then
+        echo -e "${CYAN}Par où commencer :${RESET}\n"
+        for step in "${guidance[@]}"; do
+            echo -e "  ${GREEN}→${RESET} $step"
+        done
+        echo ""
     fi
 
     # Toujours ajouter strings et xxd en bas peu importe le type

@@ -100,7 +100,19 @@
     {
       "name": "curl",
       "description": "Faire des requêtes HTTP depuis le terminal",
-      "usage": "curl -X GET <url>",
+      "usage": [
+        "\n# GET simple\n  curl <url>\n",
+        "# POST simple\n  curl -X POST <url>\n",
+        "# Suivre les redirections\n  curl -L <url>\n",
+        "# Sauvegarder la réponse\n  curl -o fichier.html <url>\n",
+        "# Télécharger avec le nom d'origine\n  curl -O <url>\n",
+        "# Basic auth\n  curl -u utilisateur:motdepasse <url>\n",
+        "# Bearer token\n  curl -H [Header] <url>\n",
+        "# POST avec JSON\n  curl -X POST -H [Header] -d '{[key]:[value]}' <url>\n",
+        "# Upload de fichier\n  curl -F [fichier] <url>\n",
+        "# Headers de réponse uniquement\n  curl -I <url>\n",
+        "# Mode silencieux\n  curl -s <url>\n"
+      ],
       "tags": [
         "web",
         "http",
@@ -117,6 +129,16 @@
         "scan",
         "ctf",
         "réseau"
+      ]
+    },
+    {
+      "name": "ent",
+      "description": "test de séquence de nombres pseudo-aléatoires - Entropie",
+      "usage": "ent [options] [fichier]",
+      "tags": [
+        "ctf",
+        "entropie",
+        "cryptographie"
       ]
     }
   ]
