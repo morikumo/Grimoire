@@ -140,6 +140,37 @@
         "entropie",
         "cryptographie"
       ]
+    },
+    {
+      "name": "zbarimg",
+      "description": "scan and decode bar codes from image file(s)",
+      "usage": "zbarimg [image]",
+      "tags": [
+        "image",
+        "ctf",
+        "stéganographie"
+      ]
+    },
+    {
+      "name": "tcpdump",
+      "description": "analyseur de flux et de paquets réseau",
+      "usage": "tcpdump [option] [file]",
+      "tags": [
+        "réseau",
+        "scan",
+        "ctf"
+      ]
+    },
+    {
+      "name": "tshark",
+      "description": "Capturer et analyser le trafic réseau",
+      "usage": ["tshark [ -i <capture interface>|- ] [ -f <capture filter> ] [ -2 ] [ -r <infile> ] [ -w <outfile>|- ] [ options ] [ <filter> ] \n",
+        "tshark --color -r [fichier.pcap]"],
+      "tags": [
+        "réseau",
+        "scan",
+        "ctf"
+      ]
     }
   ]
 }
