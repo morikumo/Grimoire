@@ -114,6 +114,15 @@ add_command() {
     read -rp "Usage              : " usage
     [[ -z "$usage" ]] && echo -e "${YELLOW}Usage vide — annulé.${RESET}" && exit 1
 
+    # ── Extraction des détails ────────────────────────────────
+    echo -e "\n${DIM}Extraction des détails depuis --help...${RESET}"
+    details_json=$(extract_details "$name")
+
+    if [[ "$details_json" == "[]" || -z "$details_json" ]]; then
+        echo -e "${DIM}Aucun détail sélectionné.${RESET}"
+        details_json="[]"
+    fi
+
     # Tags
     read -rp "Tags (séparés par virgules) : " tags_input
     tags_json=$(echo "$tags_input" | tr ',' '\n' | \
@@ -123,12 +132,87 @@ add_command() {
     tmp=$(mktemp)
     jq --arg name "$name" \
        --arg desc "$description" \
-       --arg usage "$usage" \
+       --arg usage "$usage_final" \
        --argjson tags "$tags_json" \
-       '.commands += [{"name": $name, "description": $desc, "usage": $usage, "tags": $tags}]' \
+       --argjson details "$details_json" \
+       '.commands += [{
+           "name": $name,
+           "description": $desc,
+           "usage": $usage,
+           "tags": $tags,
+           "details": $details
+       }]' \
        "$DB" > "$tmp" && mv "$tmp" "$DB"
 
     echo -e "\n${GREEN}✅ '$name' ajouté au grimoire.${RESET}"
+}
+
+show_command() {
+    local name="$1"
+
+    result=$(jq -r --arg name "$name" '
+        .commands[] | select(.name == $name)
+    ' "$DB")
+
+    if [[ -z "$result" ]]; then
+        echo -e "${YELLOW}Commande '$name' introuvable dans le grimoire.${RESET}"
+        exit 1
+    fi
+
+    desc=$(echo "$result"    | jq -r '.description')
+    usage=$(echo "$result"   | jq -r '.usage')
+    tags=$(echo "$result"    | jq -r '.tags | join(", ")')
+    details=$(echo "$result" | jq -r '.details[]? // empty')
+
+    echo -e "${CYAN}Grimoire${RESET} — ${GREEN}$name${RESET}\n"
+    echo -e "${DIM}Description :${RESET} $desc"
+    echo -e "${DIM}Usage       :${RESET} $usage"
+    echo -e "${DIM}Tags        :${RESET} $tags"
+
+    if [[ -n "$details" ]]; then
+        echo -e "\n${CYAN}Détails :${RESET}\n"
+        while IFS= read -r line; do
+            echo -e "  ${GREEN}→${RESET} $line"
+        done <<< "$details"
+    else
+        echo -e "\n${DIM}Aucun détail disponible — lance : grimoire --add $name${RESET}"
+    fi
+
+    echo ""
+}
+
+extract_details() {
+    local name="$1"
+
+    # Extraire les flags depuis --help
+    raw=$("$name" --help 2>&1)
+
+    # Parser les lignes qui ressemblent à des flags
+    details=$(echo "$raw" | grep -E '^\s+(-{1,2}[a-zA-Z]|[A-Z])' | \
+        sed 's/^[[:space:]]*//' | \
+        grep -v "^$" | \
+        head -30)
+
+    if [[ -z "$details" ]]; then
+        echo ""
+        return
+    fi
+
+    # Laisser l'utilisateur sélectionner avec fzf
+    selected=$(echo "$details" | fzf \
+        --multi \
+        --prompt="TAB pour sélectionner les détails → " \
+        --height=60% \
+        --border=rounded \
+        --header="Sélectionne les usages à garder (TAB=sélectionner, Entrée=valider)" \
+        --ansi)
+
+    # Formater en tableau JSON
+    if [[ -n "$selected" ]]; then
+        echo "$selected" | jq -R . | jq -s .
+    else
+        echo "[]"
+    fi
 }
 
 analyze_file() {
@@ -381,6 +465,10 @@ case "$1" in
     --add|-a)
         add_command
         ;;
+    --cmd|-c)
+    [[ -z "$2" ]] && echo -e "${YELLOW}Usage : grimoire --cmd <commande>${RESET}" && exit 1
+    show_command "$2"
+    ;;
     --help|-h)
         usage
         ;;
