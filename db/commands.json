@@ -101,23 +101,24 @@
       "name": "curl",
       "description": "Faire des requêtes HTTP depuis le terminal",
       "usage": [
-        "\n# GET simple\n  curl <url>\n",
-        "# POST simple\n  curl -X POST <url>\n",
-        "# Suivre les redirections\n  curl -L <url>\n",
-        "# Sauvegarder la réponse\n  curl -o fichier.html <url>\n",
-        "# Télécharger avec le nom d'origine\n  curl -O <url>\n",
-        "# Basic auth\n  curl -u utilisateur:motdepasse <url>\n",
-        "# Bearer token\n  curl -H [Header] <url>\n",
-        "# POST avec JSON\n  curl -X POST -H [Header] -d '{[key]:[value]}' <url>\n",
-        "# Upload de fichier\n  curl -F [fichier] <url>\n",
-        "# Headers de réponse uniquement\n  curl -I <url>\n",
-        "# Mode silencieux\n  curl -s <url>\n"
+        "curl <url>"
       ],
       "tags": [
         "web",
         "http",
         "réseau",
         "ctf"
+      ],
+      "details": [
+        "-v, --verbose               Make the operation more talkative",
+        "-A, --user-agent <name>     Send User-Agent <name> to server",
+        "-u, --user <user:password>  Server user and password",
+        "-T, --upload-file <file>    Transfer local FILE to destination",
+        "-s, --silent                Silent mode",
+        "-i, --show-headers          Show response headers in output",
+        "-O, --remote-name           Write output to file named as remote file",
+        "-o, --output <file>         Write to file instead of stdout",
+        "-d, --data <data>           HTTP POST data"
       ]
     },
     {
@@ -164,12 +165,24 @@
     {
       "name": "tshark",
       "description": "Capturer et analyser le trafic réseau",
-      "usage": ["tshark [ -i <capture interface>|- ] [ -f <capture filter> ] [ -2 ] [ -r <infile> ] [ -w <outfile>|- ] [ options ] [ <filter> ] \n",
-        "tshark --color -r [fichier.pcap]"],
+      "usage": [
+        "tshark [ -i <capture interface>|- ] [ -f <capture filter> ] [ -2 ] [ -r <infile> ] [ -w <outfile>|- ] [ options ] [ <filter> ] \n",
+        "tshark --color -r [fichier.pcap]"
+      ],
       "tags": [
         "réseau",
         "scan",
         "ctf"
+      ],
+      "details": [
+        "-H <hosts file>          read a list of entries from a hosts file, which will",
+        "-d <layer_type>==<selector>,<decode_as_protocol> ...",
+        "-Y <display filter>, --display-filter <display filter>",
+        "-R <read filter>, --read-filter <read filter>",
+        "-r <infile>, --read-file <infile>",
+        "-p, --no-promiscuous-mode",
+        "-i <interface>, --interface <interface>",
+        "-f <capture filter>      packet filter in libpcap filter syntax"
       ]
     }
   ]

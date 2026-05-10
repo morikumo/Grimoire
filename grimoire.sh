@@ -92,8 +92,23 @@ add_command() {
     ' "$DB")
 
     if [[ -n "$exists" ]]; then
-        echo -e "${YELLOW}⚠️  '$name' existe déjà dans le grimoire.${RESET}"
-        exit 1
+        # Vérifier si le champ details est vide
+        has_details=$(jq -r --arg name "$name" '
+            .commands[] | select(.name == $name) | .details | length
+        ' "$DB")
+
+        if [[ "$has_details" -eq 0 ]]; then
+            echo -e "${YELLOW}⚠️  '$name' existe déjà mais sans détails.${RESET}"
+            read -rp "   Ajouter les détails maintenant ? (o/N) : " confirm
+            if [[ "${confirm,,}" == "o" ]]; then
+                update_details "$name"
+            fi
+        else
+            echo -e "${YELLOW}⚠️  '$name' existe déjà dans le grimoire avec des détails.${RESET}"
+            read -rp "   Écraser les détails existants ? (o/N) : " confirm
+            [[ "${confirm,,}" == "o" ]] && update_details "$name"
+        fi
+        exit 0
     fi
 
     # Vérifier si installée sur la machine
@@ -213,6 +228,28 @@ extract_details() {
     else
         echo "[]"
     fi
+}
+
+update_details() {
+    local name="$1"
+
+    echo -e "${CYAN}Grimoire${RESET} — Ajout de détails pour ${GREEN}$name${RESET}\n"
+    echo -e "${DIM}Extraction depuis --help...${RESET}"
+
+    details_json=$(extract_details "$name")
+
+    if [[ "$details_json" == "[]" || -z "$details_json" ]]; then
+        echo -e "${YELLOW}Aucun détail sélectionné.${RESET}"
+        exit 0
+    fi
+
+    tmp=$(mktemp)
+    jq --arg name "$name" \
+       --argjson details "$details_json" \
+       '(.commands[] | select(.name == $name) | .details) = $details' \
+       "$DB" > "$tmp" && mv "$tmp" "$DB"
+
+    echo -e "\n${GREEN}✅ Détails ajoutés pour '$name'.${RESET}"
 }
 
 analyze_file() {
