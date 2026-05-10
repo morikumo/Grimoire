@@ -27,6 +27,7 @@ usage() {
     echo -e "  ${GREEN}./grimoire.sh réseau${RESET}    → commandes liées au réseau"
     echo -e "  ${GREEN}./grimoire.sh ctf${RESET}       → commandes CTF"
     echo -e "  ${GREEN}./grimoire.sh --add${RESET}     → ajouter une commande"
+    echo -e "  ${GREEN}grimoire --example <cmd>${RESET}  → ajouter des exemples à une commande"
     echo -e "  ${GREEN}grimoire --file <fichier>${RESET}  → analyser un fichier et suggérer les outils"
     echo ""
 }
@@ -162,6 +163,47 @@ add_command() {
     echo -e "\n${GREEN}✅ '$name' ajouté au grimoire.${RESET}"
 }
 
+add_example() {
+    local name="$1"
+
+    # Vérifier que la commande existe
+    exists=$(jq -r --arg name "$name" '
+        .commands[] | select(.name == $name) | .name
+    ' "$DB")
+
+    if [[ -z "$exists" ]]; then
+        echo -e "${YELLOW}'$name' introuvable — ajoute-la d'abord avec : grimoire --add $name${RESET}"
+        exit 1
+    fi
+
+    echo -e "${CYAN}Grimoire${RESET} — Ajout d'exemples pour ${GREEN}$name${RESET}\n"
+    echo -e "${DIM}Tape tes exemples (format : Description : commande)${RESET}"
+    echo -e "${DIM}Entrée vide pour terminer.${RESET}\n"
+
+    new_examples=()
+    while true; do
+        read -rp "Exemple : " example
+        [[ -z "$example" ]] && break
+        new_examples+=("$example")
+        echo -e "${GREEN}✅ Ajouté${RESET}"
+    done
+
+    if [[ ${#new_examples[@]} -eq 0 ]]; then
+        echo -e "${YELLOW}Aucun exemple ajouté.${RESET}"
+        exit 0
+    fi
+
+    examples_json=$(printf '%s\n' "${new_examples[@]}" | jq -R . | jq -s .)
+
+    tmp=$(mktemp)
+    jq --arg name "$name" \
+       --argjson examples "$examples_json" \
+       '(.commands[] | select(.name == $name) | .examples) += $examples' \
+       "$DB" > "$tmp" && mv "$tmp" "$DB"
+
+    echo -e "\n${GREEN}✅ ${#new_examples[@]} exemple(s) ajouté(s) pour '$name'.${RESET}"
+}
+
 show_command() {
     local name="$1"
 
@@ -174,10 +216,11 @@ show_command() {
         exit 1
     fi
 
-    desc=$(echo "$result"    | jq -r '.description')
-    usage=$(echo "$result"   | jq -r '.usage')
-    tags=$(echo "$result"    | jq -r '.tags | join(", ")')
-    details=$(echo "$result" | jq -r '.details[]? // empty')
+    desc=$(echo "$result"     | jq -r '.description')
+    usage=$(echo "$result"    | jq -r '.usage')
+    tags=$(echo "$result"     | jq -r '.tags | join(", ")')
+    details=$(echo "$result"  | jq -r '.details[]? // empty')
+    examples=$(echo "$result" | jq -r '.examples[]? // empty')
 
     echo -e "${CYAN}Grimoire${RESET} — ${GREEN}$name${RESET}\n"
     echo -e "${DIM}Description :${RESET} $desc"
@@ -189,8 +232,22 @@ show_command() {
         while IFS= read -r line; do
             echo -e "  ${GREEN}→${RESET} $line"
         done <<< "$details"
+    fi
+
+    if [[ -n "$examples" ]]; then
+        echo -e "\n${CYAN}Exemples :${RESET}\n"
+        while IFS= read -r line; do
+            label=$(echo "$line" | awk -F'→' '{print $1}' | xargs)
+            cmd=$(echo "$line"   | awk -F'→' '{print $2}' | xargs)
+            if [[ -n "$cmd" ]]; then
+                echo -e "  ${DIM}$label${RESET}"
+                echo -e "  ${YELLOW}$cmd${RESET}\n"
+            else
+                echo -e "  ${YELLOW}$line${RESET}\n"
+            fi
+        done <<< "$examples"
     else
-        echo -e "\n${DIM}Aucun détail disponible — lance : grimoire --add $name${RESET}"
+        echo -e "\n${DIM}Aucun exemple — lance : grimoire --example $name${RESET}"
     fi
 
     echo ""
@@ -505,6 +562,10 @@ case "$1" in
     --cmd|-c)
     [[ -z "$2" ]] && echo -e "${YELLOW}Usage : grimoire --cmd <commande>${RESET}" && exit 1
     show_command "$2"
+    ;;
+    --example|-e)
+    [[ -z "$2" ]] && echo -e "${YELLOW}Usage : grimoire --example <commande>${RESET}" && exit 1
+    add_example "$2"
     ;;
     --help|-h)
         usage
